@@ -147,12 +147,13 @@ void Bencode::dump(std::ostream& os, const BencodeDictionary& dict, const std::s
         // special case to make it pretty for dicts
         if (std::holds_alternative<BencodeDictionary>(it->second))
             dump(os, it->second, prefix + "    ");
-        dump(os, it->second, "");
+        else
+            dump(os, it->second, "");
 
         if (++it != dict.end()) std::print(",");
         std::println();
     }
-    os << "}";
+    os << prefix << "}";
 }
 
 void Bencode::dump(std::ostream& os, const BencodeValue& v, const std::string& prefix) {
