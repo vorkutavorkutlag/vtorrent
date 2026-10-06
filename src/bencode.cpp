@@ -114,30 +114,40 @@ void Bencode::dump(std::ostream& os, const std::string& s, const std::string& pr
 }
 
 void Bencode::dump(std::ostream& os, const BencodeList& ls, const std::string& prefix) {
-    os << "[\n";
-    for (auto it = ls.begin(); it != ls.end();) {
-        dump(os, *it, prefix + "    ");
+    if (ls.size() <= 1)
+        std::print(os, "[");
+    else
+        std::print(os, "[\n");
 
-        if (++it != ls.end()) os << ",";
+    for (auto it = ls.begin(); it != ls.end();) {
+        dump(os, *it, prefix);
+
+        if (++it != ls.end()) std::print(os, " , ");
     }
 
-    os << "]";
+    if (ls.size() <= 1)
+        std::print(os, "]");
+    else
+        std::print(os, "\n]");
 }
 
 void Bencode::dump(std::ostream& os, const BencodeDictionary& dict, const std::string& prefix) {
     os << "{\n";
     for (BencodeDictionary::const_iterator it = dict.begin(); it != dict.end();) {
-        dump(os, it->first, prefix + "    ");
+        dump(os, it->first, prefix + "    ");  // guaranteed string
 
         std::print(":");
 
         if (it->first == "pieces") {
-            std::println("...");
+            std::println("\"I'm not printing that\"");
             ++it;
             continue;
         }
 
-        dump(os, it->second, prefix);
+        // special case to make it pretty for dicts
+        if (std::holds_alternative<BencodeDictionary>(it->second))
+            dump(os, it->second, prefix + "    ");
+        dump(os, it->second, "");
 
         if (++it != dict.end()) std::print(",");
         std::println();
@@ -146,17 +156,6 @@ void Bencode::dump(std::ostream& os, const BencodeDictionary& dict, const std::s
 }
 
 void Bencode::dump(std::ostream& os, const BencodeValue& v, const std::string& prefix) {
-    // switch (v.index()) {
-    //     case VAR_I::INTEGER:
-    //         dump(os, std::get<int64_t>(v), prefix);
-    //     case VAR_I::STRING:
-    //         dump(os, std::get<std::string>(v), prefix);
-    //     case VAR_I::LIST:
-    //         dump(os, std::get<BencodeList>(v), prefix);
-    //     case VAR_I::DICT:
-    //         dump(os, std::get<BencodeDictionary>(v), prefix);
-    // }
-
     std::visit([&](auto&& arg) { dump(os, arg, prefix); }, v);
 }
 
