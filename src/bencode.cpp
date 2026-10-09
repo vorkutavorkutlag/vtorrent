@@ -1,3 +1,5 @@
+#include <openssl/sha.h>
+
 #include <bencode.hpp>
 #include <fstream>
 #include <iostream>
@@ -12,44 +14,61 @@ namespace fs = std::filesystem;
 /*--------------------- private implementation ------------------*/
 
 // e.g. 4:spam
-std::optional<std::string> Bencode::decode_string(std::ifstream& fstream) {
+std::optional<std::string> Bencode::decode_string(std::ifstream& fstream, ustring& raw_info,
+                                                  bool in_info) {
     unsigned length{};
 
     if (!(fstream >> length)) return std::nullopt;
 
+    if (in_info) {
+        auto temp = std::to_string(length);
+        raw_info.append(temp.begin(), temp.end());
+    }
+
     // // cast away ':'
-    if (fstream.get() != delim) return std::nullopt;
+    if (fstream.get() != consts::delim) return std::nullopt;
+    if (in_info) raw_info.push_back(consts::delim);
 
     std::string decoded;
     decoded.resize(length);
 
     fstream.read(decoded.data(), length);
+    if (in_info) raw_info.append(decoded.begin(), decoded.end());
     return decoded;
 }
 
 // e.g. i3e
-std::optional<int64_t> Bencode::decode_integer(std::ifstream& fstream) {
+std::optional<int64_t> Bencode::decode_integer(std::ifstream& fstream, ustring& raw_info,
+                                               bool in_info) {
     int64_t i{};
     if (!(fstream >> i)) return std::nullopt;
-    if (fstream.get() != container_end) return std::nullopt;
+    if (fstream.get() != consts::container_end) return std::nullopt;
+
+    if (in_info) {
+        auto temp = std::to_string(i);
+        raw_info.append(temp.begin(), temp.end());
+        raw_info.push_back(consts::container_end);
+    }
 
     return i;
 }
 
-std::optional<BencodeList> Bencode::decode_list(std::ifstream& fstream) {
+std::optional<BencodeList> Bencode::decode_list(std::ifstream& fstream, ustring& raw_info,
+                                                bool in_info) {
     BencodeList list{};
 
     for (;;) {
         {
             // termination condition
             char c;
-            if ((c = fstream.get()) == container_end)
+            if ((c = fstream.get()) == consts::container_end) {
+                if (in_info) raw_info.push_back(consts::container_end);
                 return list;
-            else
+            } else
                 fstream.putback(c);
         }
 
-        auto val = decode_arbitrary(fstream);
+        auto val = decode_arbitrary(fstream, raw_info, in_info);
         if (!val) return std::nullopt;
 
         list.push_back(*val);
@@ -60,26 +79,34 @@ std::optional<BencodeList> Bencode::decode_list(std::ifstream& fstream) {
 
 // e.g. d5:helloi5ee => {"hello": 5}
 // assuming initial 'd' was consumed
-std::optional<BencodeDictionary> Bencode::decode_dict(std::ifstream& fstream) {
+std::optional<BencodeDictionary> Bencode::decode_dict(std::ifstream& fstream, ustring& raw_info,
+                                                      bool in_info) {
     BencodeDictionary dict{};
+
+    bool was_in_info = in_info;
 
     for (;;) {
         {
             // termination condition
             char c;
-            if ((c = fstream.get()) == container_end)
+            if ((c = fstream.get()) == consts::container_end) {
+                if (in_info) raw_info.push_back(consts::container_end);
                 return dict;
-            else
+            } else
                 fstream.putback(c);
         }
 
         // keys must be strings
-        auto d_string = decode_string(fstream);
+        auto d_string = decode_string(fstream, raw_info, in_info);
         if (!d_string) return std::nullopt;
 
+        if (d_string == consts::key_info) in_info = true;
+
         // values can be any bencode value
-        auto d_val = decode_arbitrary(fstream);
+        auto d_val = decode_arbitrary(fstream, raw_info, in_info);
         if (!d_val) return std::nullopt;
+
+        if (!was_in_info && in_info) in_info = false;
 
         dict[*d_string] = *d_val;
     }
@@ -87,21 +114,24 @@ std::optional<BencodeDictionary> Bencode::decode_dict(std::ifstream& fstream) {
     return dict;
 }
 
-std::optional<BencodeValue> Bencode::decode_arbitrary(std::ifstream& fstream) {
+std::optional<BencodeValue> Bencode::decode_arbitrary(std::ifstream& fstream, ustring& raw_info,
+                                                      bool in_info) {
     char c = fstream.get();
+    if (in_info) raw_info.push_back(c);
     switch (c) {
-        case dict_start:
-            return decode_dict(fstream);
+        case consts::dict_start:
+            return decode_dict(fstream, raw_info, in_info);
 
-        case list_start:
-            return decode_list(fstream);
+        case consts::list_start:
+            return decode_list(fstream, raw_info, in_info);
 
-        case integer_start:
-            return decode_integer(fstream);
+        case consts::integer_start:
+            return decode_integer(fstream, raw_info, in_info);
 
         default:
+            if (in_info) raw_info.pop_back();
             fstream.putback(c);
-            return decode_string(fstream);
+            return decode_string(fstream, raw_info, in_info);
     }
 }
 
@@ -139,7 +169,7 @@ void Bencode::dump(std::ostream& os, const BencodeDictionary& dict, const std::s
         std::print(":");
 
         if (it->first == "pieces") {
-            std::println("\"I'm not printing that\"");
+            std::println("null");
             ++it;
             continue;
         }
@@ -160,13 +190,55 @@ void Bencode::dump(std::ostream& os, const BencodeValue& v, const std::string& p
     std::visit([&](auto&& arg) { dump(os, arg, prefix); }, v);
 }
 
+// ustring Bencode::encode(int64_t i) {
+//     auto temp = std::format("i{}e", i);
+//     return ustring{temp.begin(), temp.end()};
+// }
+
+// ustring Bencode::encode(const std::string& s) {
+//     auto temp = std::format("{}:{}", s.length(), s);
+//     return ustring{temp.begin(), temp.end()};
+// }
+
+// ustring Bencode::encode(const BencodeList& l) {
+//     ustring enc(1, consts::list_start);
+//     for (const auto& val : l) enc += encode(val);
+//     enc += consts::container_end;
+//     return enc;
+// }
+
+// ustring Bencode::encode(const BencodeDictionary& d) {
+//     ustring enc(1, consts::dict_start);
+//     for (const auto& [k, v] : d) {
+//         enc += encode(k) += encode(v);
+//     }
+//     enc += consts::container_end;
+//     return enc;
+// }
+
+// ustring Bencode::encode(const BencodeValue& val) {
+//     return std::visit([&](auto&& arg) { return encode(arg); }, val);
+// }
+
+void Bencode::compute_infohash(ustring& raw_info) {
+    SHA1(raw_info.data(), raw_info.length(), infohash.data());
+}
+
 /*--------------------- public implementation ------------------*/
 
-std::optional<BencodeDictionary> Bencode::decode_file(const fs::path& path) {
+Bencode::Bencode(const fs::path& path) {
     std::ifstream file_stream(path, std::ifstream::in);
-    if (file_stream.get() != dict_start) return std::nullopt;
-    return decode_dict(file_stream);
+    if (file_stream.get() != consts::dict_start) {
+        dict = std::nullopt;
+        return;
+    }
+
+    ustring raw_info{};
+    bool in_info = false;
+    dict = decode_dict(file_stream, raw_info, in_info);
+    compute_infohash(raw_info);
 }
 
 void Bencode::json_dump(std::ostream& os) { Bencode::dump(os, *dict, ""); }
+
 }  // namespace vtorrent
