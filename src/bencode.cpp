@@ -9,6 +9,7 @@
 #include <variant>
 
 namespace vtorrent {
+
 namespace fs = std::filesystem;
 
 /*--------------------- private implementation ------------------*/
@@ -250,17 +251,17 @@ void Bencode::compute_infohash(ustring &raw_info) {
 
 void Bencode::flatten_announce() {
   BencodeList replacement_vec{};
-  for (const auto &val :
-       std::get<BencodeList>((*dict).at(consts::key_announce_ls))) {
+  auto announce = dict->find(consts::key_announce);
+  auto announce_ls = dict->find(consts::key_announce_ls);
+  replacement_vec.push_back(std::move(std::get<std::string>(announce->second)));
+
+  for (const auto &val : std::get<BencodeList>((announce_ls->second))) {
     for (const auto &subval : std::get<BencodeList>(val))
       replacement_vec.push_back(std::move(std::get<std::string>(subval)));
   }
 
-  auto announce = dict->find(consts::key_announce);
-  replacement_vec.push_back(std::move(std::get<std::string>(announce->second)));
-
   dict->erase(announce);
-  (*dict)[consts::key_announce_ls] = replacement_vec;
+  announce_ls->second = replacement_vec;
 }
 
 /*--------------------- public implementation ------------------*/
@@ -280,4 +281,8 @@ Bencode::Bencode(const fs::path &path) {
 }
 
 void Bencode::json_dump(std::ostream &os) { Bencode::dump(os, *dict, ""); }
+
+const BencodeList &Bencode::get_tracker_urls() {
+  return std::get<BencodeList>((*dict)[vtorrent::consts::key_announce_ls]);
+}
 } // namespace vtorrent

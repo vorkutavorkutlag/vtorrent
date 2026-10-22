@@ -2,6 +2,8 @@
 #include <limits>
 #include <stdlib.h>
 
+#pragma once
+
 namespace vtorrent::consts {
 constexpr const size_t infohash_length{20UZ};
 
@@ -15,7 +17,11 @@ constexpr const char *key_info{"info"};
 constexpr const char *key_announce{"announce"};
 constexpr const char *key_announce_ls{"announce-list"};
 
+constexpr const char *UDP_url_prefix{"udp"};
+constexpr const char *HTTP_url_prefix{"http"};
+
 constexpr const uint32_t default_ip{0UL};
+constexpr const uint32_t default_key{0UL};
 constexpr const uint32_t default_numwant{
     std::numeric_limits<uint32_t>::max()}; // equiv to -1 in 2's complement
 

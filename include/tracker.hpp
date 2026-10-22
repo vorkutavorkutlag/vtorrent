@@ -1,26 +1,52 @@
 #include <array>
+#include <boost/asio.hpp>
 #include <constants.hpp>
 #include <memory>
+#include <print>
 
-namespace vtorrent {
-class SessionHTTP {
-private:
-  std::weak_ptr<std::array<unsigned char, consts::infohash_length>> infohash;
-  std::weak_ptr<std::string> client_id;
+namespace bio = boost::asio;
 
-  // IP parameter deprecated
-  uint16_t port;
+namespace vtorrent::tracker {
 
-  size_t uploaded;
+struct Tracker_CB {
+  uint64_t uploaded_{};
+  uint64_t downloaded_{};
+  uint64_t left_{};
+  uint8_t event_{};
 
-  size_t downloaded;
+  // and a set of peers
+};
 
-  size_t left;
+class Session {
+protected:
+  explicit Session(std::string &&url) : url_(std::move(url)) {}
+  std::string url_;
+  uint16_t port_{};
+  uint32_t interval_{};
 
-  uint8_t event;
-
-  // numwant parameter deprecated
+  static inline bio::io_context tracker_context_{};
 
 public:
+  virtual ~Session() = default;
+  Session(const Session &) = delete;
+  Session &operator=(const Session &) = delete;
+
+  void debug();
 };
-} // namespace vtorrent
+
+class SessionHTTP : public Session {
+public:
+  explicit SessionHTTP(std::string &&url);
+};
+
+class SessionUDP : public Session {
+public:
+  explicit SessionUDP(std::string &&url);
+
+private:
+  bio::ip::udp::socket socket_;
+};
+
+std::unique_ptr<Session> make_session(std::string &&url);
+
+} // namespace vtorrent::tracker

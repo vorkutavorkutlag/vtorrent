@@ -62,5 +62,6 @@ public:
   Bencode(const std::filesystem::path &path);
 
   void json_dump(std::ostream &os = std::cout);
+  const BencodeList &get_tracker_urls();
 };
 } // namespace vtorrent
