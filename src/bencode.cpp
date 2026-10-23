@@ -29,10 +29,10 @@ std::optional<std::string> Bencode::decode_string(std::ifstream &fstream,
   }
 
   // // cast away ':'
-  if (fstream.get() != consts::delim)
+  if (fstream.get() != globals::delim)
     return std::nullopt;
   if (in_info)
-    raw_info.push_back(consts::delim);
+    raw_info.push_back(globals::delim);
 
   std::string decoded;
   decoded.resize(length);
@@ -50,13 +50,13 @@ std::optional<int64_t> Bencode::decode_integer(std::ifstream &fstream,
   int64_t i{};
   if (!(fstream >> i))
     return std::nullopt;
-  if (fstream.get() != consts::container_end)
+  if (fstream.get() != globals::container_end)
     return std::nullopt;
 
   if (in_info) {
     auto temp = std::to_string(i);
     raw_info.append(temp.begin(), temp.end());
-    raw_info.push_back(consts::container_end);
+    raw_info.push_back(globals::container_end);
   }
 
   return i;
@@ -70,9 +70,9 @@ Bencode::decode_list(std::ifstream &fstream, ustring &raw_info, bool in_info) {
     {
       // termination condition
       char c;
-      if ((c = fstream.get()) == consts::container_end) {
+      if ((c = fstream.get()) == globals::container_end) {
         if (in_info)
-          raw_info.push_back(consts::container_end);
+          raw_info.push_back(globals::container_end);
         return list;
       } else
         fstream.putback(c);
@@ -100,9 +100,9 @@ Bencode::decode_dict(std::ifstream &fstream, ustring &raw_info, bool in_info) {
     {
       // termination condition
       char c;
-      if ((c = fstream.get()) == consts::container_end) {
+      if ((c = fstream.get()) == globals::container_end) {
         if (in_info)
-          raw_info.push_back(consts::container_end);
+          raw_info.push_back(globals::container_end);
         return dict;
       } else
         fstream.putback(c);
@@ -113,7 +113,7 @@ Bencode::decode_dict(std::ifstream &fstream, ustring &raw_info, bool in_info) {
     if (!d_string)
       return std::nullopt;
 
-    if (d_string == consts::key_info)
+    if (d_string == globals::key_info)
       in_info = true;
 
     // values can be any bencode value
@@ -137,13 +137,13 @@ std::optional<BencodeValue> Bencode::decode_arbitrary(std::ifstream &fstream,
   if (in_info)
     raw_info.push_back(c);
   switch (c) {
-  case consts::dict_start:
+  case globals::dict_start:
     return decode_dict(fstream, raw_info, in_info);
 
-  case consts::list_start:
+  case globals::list_start:
     return decode_list(fstream, raw_info, in_info);
 
-  case consts::integer_start:
+  case globals::integer_start:
     return decode_integer(fstream, raw_info, in_info);
 
   default:
@@ -251,8 +251,8 @@ void Bencode::compute_infohash(ustring &raw_info) {
 
 void Bencode::flatten_announce() {
   BencodeList replacement_vec{};
-  auto announce = dict->find(consts::key_announce);
-  auto announce_ls = dict->find(consts::key_announce_ls);
+  auto announce = dict->find(globals::key_announce);
+  auto announce_ls = dict->find(globals::key_announce_ls);
   replacement_vec.push_back(std::move(std::get<std::string>(announce->second)));
 
   for (const auto &val : std::get<BencodeList>((announce_ls->second))) {
@@ -268,7 +268,7 @@ void Bencode::flatten_announce() {
 
 Bencode::Bencode(const fs::path &path) {
   std::ifstream file_stream(path, std::ifstream::in);
-  if (file_stream.get() != consts::dict_start) {
+  if (file_stream.get() != globals::dict_start) {
     dict = std::nullopt;
     return;
   }
@@ -282,7 +282,7 @@ Bencode::Bencode(const fs::path &path) {
 
 void Bencode::json_dump(std::ostream &os) { Bencode::dump(os, *dict, ""); }
 
-const BencodeList &Bencode::get_tracker_urls() {
-  return std::get<BencodeList>((*dict)[vtorrent::consts::key_announce_ls]);
+BencodeList &Bencode::get_tracker_urls() {
+  return std::get<BencodeList>((*dict)[vtorrent::globals::key_announce_ls]);
 }
 } // namespace vtorrent

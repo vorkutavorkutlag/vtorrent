@@ -11,12 +11,9 @@ int main(void) {
   // }
 
   std::string url("udp://tracker.opentrackr.org:1337/announce");
-  auto sesh = vtorrent::tracker::make_session(std::move(url));
+  auto tracker_cb = std::make_shared<vtorrent::tracker::Tracker_CB>();
 
-  if (!sesh)
-    std::println("What?");
-
-  sesh->debug();
+  auto sesh = vtorrent::tracker::make_session(std::move(url), tracker_cb);
 
   return 0;
 }

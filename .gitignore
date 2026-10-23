@@ -2,3 +2,5 @@
 *.torrent
 CMakePresets.json
 /build/
+*vtorrent*
+.vscode/

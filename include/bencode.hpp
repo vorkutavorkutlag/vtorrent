@@ -1,5 +1,5 @@
-#include <constants.hpp>
 #include <filesystem>
+#include <globals.hpp>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -55,13 +55,13 @@ private:
 
 public:
   std::optional<BencodeDictionary> dict;
-  std::array<unsigned char, consts::infohash_length> infohash;
+  std::array<unsigned char, globals::infohash_length> infohash;
 
   /* Returns an optional decoded dictionary from provided filepath, or nullopt
      if parsing error */
   Bencode(const std::filesystem::path &path);
 
   void json_dump(std::ostream &os = std::cout);
-  const BencodeList &get_tracker_urls();
+  BencodeList &get_tracker_urls();
 };
 } // namespace vtorrent
