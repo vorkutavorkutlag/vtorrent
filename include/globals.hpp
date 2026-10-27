@@ -8,7 +8,7 @@
 namespace vtorrent {
 class globals {
 public:
-  static inline constexpr size_t infohash_length{20UZ};
+  static inline constexpr size_t standard_length{20UZ};
 
   static inline constexpr char dict_start{'d'};
   static inline constexpr char list_start{'l'};
@@ -25,9 +25,11 @@ public:
 
   static inline constexpr uint32_t default_ip{0UL};
   static inline constexpr uint32_t default_key{0UL};
+  static inline constexpr uint32_t default_num_want{static_cast<uint32_t>(-1L)};
   static inline constexpr uint32_t default_numwant{
       std::numeric_limits<uint32_t>::max()}; // equiv to -1 in 2's complement
 
+  static inline constexpr uint32_t UDP_conn_validity{1UL}; // in minutes
   static inline constexpr uint64_t UDP_protocol_id{0x41727101980ULL};
   static inline constexpr uint32_t UDP_action_connect{0UL};
   static inline constexpr uint32_t UDP_action_announce{1UL};

@@ -1,5 +1,6 @@
 #include <array>
 #include <boost/asio.hpp>
+#include <chrono>
 #include <globals.hpp>
 #include <memory>
 #include <mutex>
@@ -11,22 +12,27 @@ typedef std::basic_string<unsigned char> ustring;
 
 namespace vtorrent::tracker {
 
-struct minimal_peer {
-  // tmp?
-  std::array<uint8_t, 4> ip_{};
-  uint16_t port_{};
+struct basic_peer {
+  uint32_t ip_;
+  uint16_t port_;
+
+  auto operator<=>(const basic_peer &other) const = default;
 };
 
 struct Tracker_CB {
+  Tracker_CB(const auto &info_hash, const auto &peer_id)
+      : info_hash_(info_hash), peer_id_(peer_id) {}
+
   std::mutex mtx_{};
 
-  ustring info_hash_{};
+  std::array<unsigned char, 20> info_hash_{};
+  std::array<unsigned char, 20> peer_id_{};
   uint64_t uploaded_{};
   uint64_t downloaded_{};
   uint64_t left_{};
   uint8_t event_{};
 
-  std::set<minimal_peer> peers_{};
+  std::set<basic_peer> peers_{};
 };
 
 class Session {
@@ -63,6 +69,8 @@ public:
 
 private:
   bio::ip::udp::socket socket_;
+
+  std::chrono::steady_clock::time_point last_connect_{};
 
   std::optional<uint64_t> connect();
   void announce(uint64_t conn_id);

@@ -55,7 +55,7 @@ private:
 
 public:
   std::optional<BencodeDictionary> dict;
-  std::array<unsigned char, globals::infohash_length> infohash;
+  std::array<unsigned char, globals::standard_length> infohash;
 
   /* Returns an optional decoded dictionary from provided filepath, or nullopt
      if parsing error */
