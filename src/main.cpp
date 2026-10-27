@@ -14,6 +14,7 @@ int main(void) {
   auto tracker_cb = std::make_shared<vtorrent::tracker::Tracker_CB>();
 
   auto sesh = vtorrent::tracker::make_session(std::move(url), tracker_cb);
+  sesh->run();
 
   return 0;
 }

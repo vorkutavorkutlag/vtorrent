@@ -44,22 +44,27 @@ public:
   virtual ~Session() = default;
   Session(const Session &) = delete;
   Session &operator=(const Session &) = delete;
+
+  virtual void run() = 0;
 };
 
 class SessionHTTP : public Session {
 public:
   explicit SessionHTTP(std::string &&url, std::shared_ptr<Tracker_CB> cb);
+
+  void run() override;
 };
 
 class SessionUDP : public Session {
 public:
   explicit SessionUDP(std::string &&url, std::shared_ptr<Tracker_CB> cb);
-  void run();
+
+  void run() override;
 
 private:
   bio::ip::udp::socket socket_;
 
-  uint64_t connect();
+  std::optional<uint64_t> connect();
   void announce(uint64_t conn_id);
 };
 

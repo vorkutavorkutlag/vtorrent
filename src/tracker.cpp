@@ -61,11 +61,11 @@ SessionUDP::SessionUDP(std::string &&url, std::shared_ptr<Tracker_CB> cb)
   throw(std::runtime_error("Bad tracker url"));
 }
 
-uint64_t SessionUDP::connect() {
+std::optional<uint64_t> SessionUDP::connect() {
   // --- SEND ---
   uint32_t transaction_id = globals::rand32();
-
   std::array<uint8_t, 16> buffer{};
+
   boost::endian::endian_store<uint64_t, 8, boost::endian::order::big>(
       buffer.data(), globals::UDP_protocol_id);
 
@@ -75,16 +75,48 @@ uint64_t SessionUDP::connect() {
   boost::endian::endian_store<uint64_t, 4, boost::endian::order::big>(
       buffer.data() + 12, transaction_id);
 
-  socket_.send(boost::asio::buffer(buffer));
+  boost::system::error_code ec;
+
+  socket_.send(boost::asio::buffer(buffer), 0, ec);
+  if (ec)
+    return std::nullopt;
 
   // --- RECEIVE ---
+
+  socket_.receive(boost::asio::buffer(buffer), 0, ec);
+  if (ec)
+    return std::nullopt;
+
+  uint32_t resp_protocol_id =
+      boost::endian::endian_load<uint64_t, 4, boost::endian::order::big>(
+          buffer.data());
+
+  uint32_t resp_transaction_id =
+      boost::endian::endian_load<uint64_t, 4, boost::endian::order::big>(
+          buffer.data() + 4);
+
+  uint64_t resp_connection_id =
+      boost::endian::endian_load<uint64_t, 8, boost::endian::order::big>(
+          buffer.data() + 8);
+
+  if (resp_protocol_id != globals::UDP_action_connect)
+    return std::nullopt;
+  if (resp_transaction_id != transaction_id)
+    return std::nullopt;
+
+  return resp_connection_id;
 }
 
 void SessionUDP::announce(uint64_t conn_id) {}
 
-void SessionUDP::run() {}
+void SessionUDP::run() {
+  if (auto conn_res = connect())
+    std::println("Successfully connected with ID: {}", *conn_res);
+}
 
 SessionHTTP::SessionHTTP(std::string &&url, std::shared_ptr<Tracker_CB> cb)
     : Session::Session(std::move(url), cb) {}
+
+void SessionHTTP::run() { ; }
 
 } // namespace vtorrent::tracker
