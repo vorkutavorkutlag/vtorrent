@@ -130,7 +130,7 @@ std::optional<uint64_t> SessionUDP::connect() {
   98
 */
 
-void SessionUDP::announce(uint64_t conn_id) {
+bool SessionUDP::announce(uint64_t conn_id) {
   using namespace boost;
   uint32_t transaction_id = globals::rand32();
   std::array<uint8_t, 98> sbuf{};
@@ -158,41 +158,46 @@ void SessionUDP::announce(uint64_t conn_id) {
   put64(conn_id);
   put32(globals::UDP_action_announce);
   put32(transaction_id);
-  putBytes(cb_->info_hash_.data(), globals::standard_length);
-  putBytes(cb_->peer_id_.data(), globals::standard_length);
-  put64(cb_->downloaded_);
-  put64(cb_->left_);
-  put64(cb_->uploaded_);
-  put32(cb_->event_);
+
+  {
+    std::lock_guard<std::mutex> lock(cb_->mtx_);
+    putBytes(cb_->info_hash_.data(), globals::standard_length);
+    putBytes(cb_->peer_id_.data(), globals::standard_length);
+    put64(cb_->downloaded_);
+    put64(cb_->left_);
+    put64(cb_->uploaded_);
+    put32(cb_->event_);
+  }
+
   put32(globals::default_ip);
   put32(globals::default_key);
-  put32(globals::default_num_want);
+  put32(globals::default_numwant);
   put16(6881); // should not be magic number
 
   boost::system::error_code ec;
   socket_.send(boost::asio::buffer(sbuf), 0, ec);
   if (ec)
-    return;
+    return false;
 
   // --- RECEIVE ---
   std::array<uint8_t, 1220> resp_buf{};
   size_t resp_size = socket_.receive(boost::asio::buffer(resp_buf), 0, ec);
   if (ec || resp_size < 20)
-    return;
+    return false;
 
   uint32_t resp_action =
       boost::endian::endian_load<uint32_t, 4, boost::endian::order::big>(
           resp_buf.data());
 
   if (resp_action != globals::UDP_action_announce)
-    return;
+    return false;
 
   uint32_t resp_transaction_id =
       boost::endian::endian_load<uint32_t, 4, boost::endian::order::big>(
           resp_buf.data() + 4);
 
   if (resp_transaction_id != transaction_id)
-    return;
+    return false;
 
   interval_ =
       boost::endian::endian_load<uint32_t, 4, boost::endian::order::big>(
@@ -215,33 +220,45 @@ void SessionUDP::announce(uint64_t conn_id) {
     uint16_t peer_port =
         boost::endian::endian_load<uint16_t, 2, boost::endian::order::big>(
             resp_buf.data() + peer_offset + 4);
-    // std::println("Peer {}.{}.{}.{}:{}", peer_ip >> 24, (peer_ip >> 16) &
-    // 0xFF,
-    //              (peer_ip >> 8) & 0xFF, peer_ip & 0xFF, peer_port);
-    cb_->peers_.insert({peer_ip, peer_port});
+
+    {
+      std::lock_guard<std::mutex> lock(cb_->mtx_);
+      cb_->peers_.insert({peer_ip, peer_port});
+    }
   }
+
+  return true;
+}
+
+void debug_ip(uint32_t peer_ip, uint16_t peer_port) {
+  std::println("Peer {}.{}.{}.{}:{}", peer_ip >> 24, (peer_ip >> 16) & 0xFF,
+               (peer_ip >> 8) & 0xFF, peer_ip & 0xFF, peer_port);
 }
 
 /*
   Every minute, should reconnect to the tracker to keep the connection alive.
 */
 void SessionUDP::run() {
-  size_t n{};
+  size_t despair{};
   for (;;) {
     auto conn_id = connect();
     if (!conn_id) {
-      std::this_thread::sleep_for(std::chrono::seconds(15 * (2 << n)));
-      if (++n > 8)
-        break;
+      std::this_thread::sleep_for(std::chrono::seconds(15 * (2 << despair)));
+      if (++despair > 8)
+        break; // give up
       continue;
     }
+
+    // reset despair
+    despair = 0;
 
     for (;;) {
       if (last_connect_ + std::chrono::minutes(globals::UDP_conn_validity) <
           std::chrono::steady_clock::now())
         break; // time to reconnect
 
-      announce(*conn_id);
+      if (!announce(*conn_id))
+        break;
       std::this_thread::sleep_for(std::chrono::minutes(interval_));
     }
   }

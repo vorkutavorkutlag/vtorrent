@@ -73,7 +73,7 @@ private:
   std::chrono::steady_clock::time_point last_connect_{};
 
   std::optional<uint64_t> connect();
-  void announce(uint64_t conn_id);
+  bool announce(uint64_t conn_id);
 };
 
 std::unique_ptr<Session> make_session(std::string &&url,

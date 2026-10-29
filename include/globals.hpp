@@ -16,18 +16,17 @@ public:
   static inline constexpr char integer_start{'i'};
   static inline constexpr char delim{':'};
 
-  static inline constexpr const char *key_info{"info"};
-  static inline constexpr const char *key_announce{"announce"};
-  static inline constexpr const char *key_announce_ls{"announce-list"};
+  static inline constexpr std::string_view peer_id_prefix{"-VT0001-"};
+  static inline constexpr std::string_view key_info{"info"};
+  static inline constexpr std::string_view key_announce{"announce"};
+  static inline constexpr std::string_view key_announce_ls{"announce-list"};
 
-  static inline constexpr const char *UDP_url_prefix{"udp"};
-  static inline constexpr const char *HTTP_url_prefix{"http"};
+  static inline constexpr std::string_view UDP_url_prefix{"udp"};
+  static inline constexpr std::string_view HTTP_url_prefix{"http"};
 
   static inline constexpr uint32_t default_ip{0UL};
   static inline constexpr uint32_t default_key{0UL};
-  static inline constexpr uint32_t default_num_want{static_cast<uint32_t>(-1L)};
-  static inline constexpr uint32_t default_numwant{
-      std::numeric_limits<uint32_t>::max()}; // equiv to -1 in 2's complement
+  static inline constexpr uint32_t default_numwant{static_cast<uint32_t>(-1L)};
 
   static inline constexpr uint32_t UDP_conn_validity{1UL}; // in minutes
   static inline constexpr uint64_t UDP_protocol_id{0x41727101980ULL};
@@ -39,6 +38,17 @@ public:
   static inline constexpr uint32_t UDP_event_stopped{3UL};
 
   static inline uint32_t rand32() { return distrib32(gen); }
+
+  static inline std::string generate_peer_id() {
+    std::string peer_id;
+    peer_id.reserve(globals::standard_length);
+    peer_id.append(peer_id_prefix);
+
+    for (size_t i = 0; i < standard_length - peer_id_prefix.length(); ++i)
+      peer_id.push_back(static_cast<char>(globals::rand32() % 256));
+
+    return peer_id;
+  }
 
 private:
   static inline std::random_device rd{};

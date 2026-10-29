@@ -1,4 +1,5 @@
 #include <bencode.hpp>
+#include <globals.hpp>
 #include <print>
 #include <tracker.hpp>
 
@@ -13,9 +14,7 @@ int main(void) {
   std::string url("udp://tracker.opentrackr.org:1337/announce");
 
   // temporary peer_id for testing
-  auto peer_id = be.infohash;
-  std::transform(peer_id.begin(), peer_id.end(), peer_id.begin(),
-                 [](unsigned char c) { return c << 1; });
+  auto peer_id = vtorrent::globals::generate_peer_id();
 
   auto tracker_cb =
       std::make_shared<vtorrent::tracker::Tracker_CB>(be.infohash, peer_id);
