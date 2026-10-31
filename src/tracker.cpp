@@ -1,6 +1,7 @@
 #include <boost/endian/conversion.hpp>
 #include <boost/url/parse.hpp>
 #include <boost/url/url_view.hpp>
+#include <cpr/cpr.h>
 #include <iostream>
 #include <tracker.hpp>
 
@@ -172,7 +173,7 @@ bool SessionUDP::announce(uint64_t conn_id) {
   put32(globals::default_ip);
   put32(globals::default_key);
   put32(globals::default_numwant);
-  put16(6881); // should not be magic number
+  put16(globals::UDP_default_port); // should not be magic number
 
   boost::system::error_code ec;
   socket_.send(boost::asio::buffer(sbuf), 0, ec);
@@ -180,6 +181,7 @@ bool SessionUDP::announce(uint64_t conn_id) {
     return false;
 
   // --- RECEIVE ---
+
   std::array<uint8_t, 1220> resp_buf{};
   size_t resp_size = socket_.receive(boost::asio::buffer(resp_buf), 0, ec);
   if (ec || resp_size < 20)
@@ -240,6 +242,7 @@ void debug_ip(uint32_t peer_ip, uint16_t peer_port) {
 */
 void SessionUDP::run() {
   size_t despair{};
+
   for (;;) {
     auto conn_id = connect();
     if (!conn_id) {
@@ -269,6 +272,34 @@ void SessionUDP::run() {
 SessionHTTP::SessionHTTP(std::string &&url, std::shared_ptr<Tracker_CB> cb)
     : Session::Session(std::move(url), cb) {}
 
-void SessionHTTP::run() { ; }
+void SessionHTTP::run() {
+  auto event = [&]() -> std::string {
+    std::lock_guard<std::mutex> lock(cb_->mtx_);
+    switch (cb_->event_) {
+    case 1:
+      return globals::HTTP_event_completed;
+    case 2:
+      return globals::HTTP_event_started;
+    case 3:
+      return globals::HTTP_event_stopped;
+    default:
+      return globals::HTTP_event_none;
+    }
+  }();
+
+  std::lock_guard<std::mutex> lock(cb_->mtx_);
+  cpr::Parameters params{{"info_hash", cb_->info_hash_s},
+                         {"peer_id", cb_->peer_id_s},
+                         {"port", globals::HTTP_default_port},
+                         {"uploaded", std::to_string(cb_->uploaded_)},
+                         {"downloaded", std::to_string(cb_->downloaded_)},
+                         {"left", std::to_string(cb_->left_)},
+                         {"event", event},
+                         {"numwant", globals::HTTP_default_numwant},
+                         {"key", globals::HTTP_default_key}};
+  lock.~lock_guard();
+
+  cpr::Response r = cpr::Get(cpr::Url{url_}, params);
+}
 
 } // namespace vtorrent::tracker

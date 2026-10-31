@@ -32,20 +32,36 @@ public:
   static inline constexpr uint64_t UDP_protocol_id{0x41727101980ULL};
   static inline constexpr uint32_t UDP_action_connect{0UL};
   static inline constexpr uint32_t UDP_action_announce{1UL};
+  static inline constexpr uint16_t UDP_default_port{6881U};
+
   static inline constexpr uint32_t UDP_event_none{0UL};
   static inline constexpr uint32_t UDP_event_completed{1UL};
   static inline constexpr uint32_t UDP_event_started{2UL};
   static inline constexpr uint32_t UDP_event_stopped{3UL};
 
+  static inline constexpr std::string HTTP_default_port{"6881"};
+  static inline constexpr std::string HTTP_default_numwant{"-1"};
+  static inline constexpr std::string HTTP_default_key{"0"};
+
+  static inline constexpr std::string HTTP_event_completed{"completed"};
+  static inline constexpr std::string HTTP_event_started{"started"};
+  static inline constexpr std::string HTTP_event_stopped{"stopped"};
+  static inline constexpr std::string HTTP_event_none{"none"};
+
+  // maybe should be randomized to blend in with others
+  static inline constexpr std::string_view default_user_agent{"vtorrent/0.1"};
+
   static inline uint32_t rand32() { return distrib32(gen); }
 
-  static inline std::string generate_peer_id() {
-    std::string peer_id;
-    peer_id.reserve(globals::standard_length);
-    peer_id.append(peer_id_prefix);
+  // maybe should randomize prefix as well
+  static inline std::array<unsigned char, standard_length> generate_peer_id() {
+    std::array<unsigned char, standard_length> peer_id{};
+    std::string peer_id_str;
+    peer_id_str.reserve(globals::standard_length);
+    peer_id_str.append(peer_id_prefix);
 
     for (size_t i = 0; i < standard_length - peer_id_prefix.length(); ++i)
-      peer_id.push_back(static_cast<char>(globals::rand32() % 256));
+      peer_id[i] = static_cast<unsigned char>(globals::rand32() % 256);
 
     return peer_id;
   }

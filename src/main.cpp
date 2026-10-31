@@ -13,9 +13,7 @@ int main(void) {
 
   std::string url("udp://tracker.opentrackr.org:1337/announce");
 
-  // temporary peer_id for testing
   auto peer_id = vtorrent::globals::generate_peer_id();
-
   auto tracker_cb =
       std::make_shared<vtorrent::tracker::Tracker_CB>(be.infohash, peer_id);
 

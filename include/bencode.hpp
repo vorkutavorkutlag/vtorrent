@@ -1,9 +1,9 @@
 #include <filesystem>
 #include <globals.hpp>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -12,7 +12,7 @@ typedef std::basic_string<unsigned char> ustring;
 
 struct BencodeValue;
 
-using BencodeDictionary = std::unordered_map<std::string, BencodeValue>;
+using BencodeDictionary = std::map<std::string, BencodeValue, std::less<>>;
 using BencodeList = std::vector<BencodeValue>;
 
 struct BencodeValue

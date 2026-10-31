@@ -21,12 +21,19 @@ struct basic_peer {
 
 struct Tracker_CB {
   Tracker_CB(const auto &info_hash, const auto &peer_id)
-      : info_hash_(info_hash), peer_id_(peer_id) {}
+      : info_hash_(info_hash), peer_id_(peer_id) {
+    info_hash_s = std::string(reinterpret_cast<char *>(info_hash_.data()),
+                              info_hash_.size());
+    peer_id_s =
+        std::string(reinterpret_cast<char *>(peer_id_.data()), peer_id_.size());
+  }
 
   std::mutex mtx_{};
 
   std::array<unsigned char, 20> info_hash_{};
   std::array<unsigned char, 20> peer_id_{};
+  std::string info_hash_s{};
+  std::string peer_id_s{};
   uint64_t uploaded_{};
   uint64_t downloaded_{};
   uint64_t left_{};
@@ -41,8 +48,8 @@ protected:
       : url_(std::move(url)), cb_(cb) {}
   std::shared_ptr<Tracker_CB> cb_;
   std::string url_;
-  uint16_t port_{};
   uint32_t interval_{};
+  uint16_t port_{};
 
   static inline bio::io_context tracker_context_{};
 

@@ -255,13 +255,13 @@ void Bencode::flatten_announce() {
   auto announce_ls = dict->find(globals::key_announce_ls);
   replacement_vec.push_back(std::move(std::get<std::string>(announce->second)));
 
-  for (const auto &val : std::get<BencodeList>((announce_ls->second))) {
-    for (const auto &subval : std::get<BencodeList>(val))
+  for (auto &val : std::get<BencodeList>((announce_ls->second))) {
+    for (auto &subval : std::get<BencodeList>(val))
       replacement_vec.push_back(std::move(std::get<std::string>(subval)));
   }
 
   dict->erase(announce);
-  announce_ls->second = replacement_vec;
+  announce_ls->second = std::move(replacement_vec);
 }
 
 /*--------------------- public implementation ------------------*/
@@ -283,6 +283,11 @@ Bencode::Bencode(const fs::path &path) {
 void Bencode::json_dump(std::ostream &os) { Bencode::dump(os, *dict, ""); }
 
 BencodeList &Bencode::get_tracker_urls() {
-  return std::get<BencodeList>((*dict)[vtorrent::globals::key_announce_ls]);
+  auto it = dict->find(vtorrent::globals::key_announce_ls);
+  if (it == dict->end()) {
+    throw std::runtime_error("Tracker URLs not found");
+  }
+
+  return std::get<BencodeList>(it->second);
 }
 } // namespace vtorrent
