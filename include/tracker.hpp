@@ -48,7 +48,7 @@ protected:
       : url_(std::move(url)), cb_(cb) {}
   std::shared_ptr<Tracker_CB> cb_;
   std::string url_;
-  uint32_t interval_{};
+  uint32_t interval_{globals::default_interval};
   uint16_t port_{};
 
   static inline bio::io_context tracker_context_{};
@@ -66,6 +66,9 @@ public:
   explicit SessionHTTP(std::string &&url, std::shared_ptr<Tracker_CB> cb);
 
   void run() override;
+
+private:
+  bool announce();
 };
 
 class SessionUDP : public Session {

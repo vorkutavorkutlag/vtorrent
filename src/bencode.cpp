@@ -15,9 +15,8 @@ namespace fs = std::filesystem;
 /*--------------------- private implementation ------------------*/
 
 // e.g. 4:spam
-std::optional<std::string> Bencode::decode_string(std::ifstream &fstream,
-                                                  ustring &raw_info,
-                                                  bool in_info) {
+std::optional<std::string>
+Bencode::decode_string(std::istream &fstream, ustring &raw_info, bool in_info) {
   unsigned length{};
 
   if (!(fstream >> length))
@@ -44,7 +43,7 @@ std::optional<std::string> Bencode::decode_string(std::ifstream &fstream,
 }
 
 // e.g. i3e
-std::optional<int64_t> Bencode::decode_integer(std::ifstream &fstream,
+std::optional<int64_t> Bencode::decode_integer(std::istream &fstream,
                                                ustring &raw_info,
                                                bool in_info) {
   int64_t i{};
@@ -63,7 +62,7 @@ std::optional<int64_t> Bencode::decode_integer(std::ifstream &fstream,
 }
 
 std::optional<BencodeList>
-Bencode::decode_list(std::ifstream &fstream, ustring &raw_info, bool in_info) {
+Bencode::decode_list(std::istream &fstream, ustring &raw_info, bool in_info) {
   BencodeList list{};
 
   for (;;) {
@@ -91,7 +90,7 @@ Bencode::decode_list(std::ifstream &fstream, ustring &raw_info, bool in_info) {
 // e.g. d5:helloi5ee => {"hello": 5}
 // assuming initial 'd' was consumed
 std::optional<BencodeDictionary>
-Bencode::decode_dict(std::ifstream &fstream, ustring &raw_info, bool in_info) {
+Bencode::decode_dict(std::istream &fstream, ustring &raw_info, bool in_info) {
   BencodeDictionary dict{};
 
   bool was_in_info = in_info;
@@ -130,7 +129,7 @@ Bencode::decode_dict(std::ifstream &fstream, ustring &raw_info, bool in_info) {
   return dict;
 }
 
-std::optional<BencodeValue> Bencode::decode_arbitrary(std::ifstream &fstream,
+std::optional<BencodeValue> Bencode::decode_arbitrary(std::istream &fstream,
                                                       ustring &raw_info,
                                                       bool in_info) {
   char c = fstream.get();
@@ -266,6 +265,7 @@ void Bencode::flatten_announce() {
 
 /*--------------------- public implementation ------------------*/
 
+// This constructor treats the file as a torrent file, crashes otherwise
 Bencode::Bencode(const fs::path &path) {
   std::ifstream file_stream(path, std::ifstream::in);
   if (file_stream.get() != globals::dict_start) {
@@ -278,6 +278,19 @@ Bencode::Bencode(const fs::path &path) {
   dict = decode_dict(file_stream, raw_info, in_info);
   compute_infohash(raw_info);
   flatten_announce();
+}
+
+// This constructor works for the HTTP response.
+Bencode::Bencode(std::istream &stream) {
+  if (stream.get() != globals::dict_start) {
+    dict = std::nullopt;
+    return;
+  }
+
+  // tiny bit wasteful
+  ustring raw_info{};
+  bool in_info = false;
+  dict = decode_dict(stream, raw_info, in_info);
 }
 
 void Bencode::json_dump(std::ostream &os) { Bencode::dump(os, *dict, ""); }

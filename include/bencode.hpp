@@ -23,15 +23,15 @@ struct BencodeValue
 class Bencode {
 private:
   static std::optional<std::string>
-  decode_string(std::ifstream &fstream, ustring &raw_info, bool in_info);
-  static std::optional<int64_t> decode_integer(std::ifstream &fstream,
+  decode_string(std::istream &fstream, ustring &raw_info, bool in_info);
+  static std::optional<int64_t> decode_integer(std::istream &fstream,
                                                ustring &raw_info, bool in_info);
   static std::optional<BencodeList>
-  decode_list(std::ifstream &fstream, ustring &raw_info, bool in_info);
+  decode_list(std::istream &fstream, ustring &raw_info, bool in_info);
   static std::optional<BencodeDictionary>
-  decode_dict(std::ifstream &fstream, ustring &raw_info, bool in_info);
+  decode_dict(std::istream &fstream, ustring &raw_info, bool in_info);
   static std::optional<BencodeValue>
-  decode_arbitrary(std::ifstream &fstream, ustring &raw_info, bool in_info);
+  decode_arbitrary(std::istream &fstream, ustring &raw_info, bool in_info);
 
   static void dump(std::ostream &os, const BencodeValue &v,
                    const std::string &prefix);
@@ -60,6 +60,7 @@ public:
   /* Returns an optional decoded dictionary from provided filepath, or nullopt
      if parsing error */
   Bencode(const std::filesystem::path &path);
+  Bencode(std::istream &stream);
 
   void json_dump(std::ostream &os = std::cout);
   BencodeList &get_tracker_urls();

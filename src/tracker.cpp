@@ -1,3 +1,4 @@
+#include <bencode.hpp>
 #include <boost/endian/conversion.hpp>
 #include <boost/url/parse.hpp>
 #include <boost/url/url_view.hpp>
@@ -272,7 +273,7 @@ void SessionUDP::run() {
 SessionHTTP::SessionHTTP(std::string &&url, std::shared_ptr<Tracker_CB> cb)
     : Session::Session(std::move(url), cb) {}
 
-void SessionHTTP::run() {
+bool SessionHTTP::announce() {
   auto event = [&]() -> std::string {
     std::lock_guard<std::mutex> lock(cb_->mtx_);
     switch (cb_->event_) {
@@ -296,11 +297,24 @@ void SessionHTTP::run() {
                          {"left", std::to_string(cb_->left_)},
                          {"event", event},
                          {"numwant", globals::HTTP_default_numwant},
-                         {"key", globals::HTTP_default_key}};
+                         {"key", globals::HTTP_default_key},
+                         {"compact", "1"},
+                         {"no_peer_id", "1"}};
   lock.~lock_guard();
 
   cpr::Response resp = cpr::Get(cpr::Url{url_}, params);
-  std::println("HTTP TRACKER SERVER RESPONSE:\n{}", resp.text);
+
+  // only CODE 200 is relevant
+  if (resp.status_code != 200)
+    return false;
+
+  std::istringstream stream(resp.text);
+  Bencode be(stream);
+  be.json_dump(std::cout);
+
+  return true;
 }
+
+void SessionHTTP::run() { announce(); }
 
 } // namespace vtorrent::tracker

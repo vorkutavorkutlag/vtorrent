@@ -48,6 +48,9 @@ public:
   static inline constexpr std::string HTTP_event_stopped{"stopped"};
   static inline constexpr std::string HTTP_event_none{"none"};
 
+  // in seconds
+  static inline uint32_t default_interval{60U};
+
   // maybe should be randomized to blend in with others
   static inline constexpr std::string_view default_user_agent{"vtorrent/0.1"};
 
