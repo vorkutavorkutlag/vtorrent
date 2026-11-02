@@ -241,7 +241,7 @@ void debug_ip(uint32_t peer_ip, uint16_t peer_port) {
   Every minute, should reconnect to the tracker to keep the connection alive.
 */
 void SessionUDP::run() {
-  size_t despair{};
+  unsigned despair{};
 
   for (;;) {
     auto conn_id = connect();
@@ -299,7 +299,8 @@ void SessionHTTP::run() {
                          {"key", globals::HTTP_default_key}};
   lock.~lock_guard();
 
-  cpr::Response r = cpr::Get(cpr::Url{url_}, params);
+  cpr::Response resp = cpr::Get(cpr::Url{url_}, params);
+  std::println("HTTP TRACKER SERVER RESPONSE:\n{}", resp.text);
 }
 
 } // namespace vtorrent::tracker
