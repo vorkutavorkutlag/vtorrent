@@ -310,11 +310,54 @@ bool SessionHTTP::announce() {
 
   std::istringstream stream(resp.text);
   Bencode be(stream);
-  be.json_dump(std::cout);
+  // be.json_dump(std::cout);
+
+  auto it = be.dict->find(vtorrent::globals::key_min_interval);
+  if (it != be.dict->end()) {
+    interval_ = std::get<int64_t>(it->second);
+  } else {
+    it = be.dict->find(vtorrent::globals::key_interval);
+    if (it != be.dict->end())
+      interval_ = std::get<int64_t>(it->second);
+  }
+
+  // will only implement compact peers for now
+  it = be.dict->find(vtorrent::globals::key_peers);
+  if (it != be.dict->end())
+    return false;
+
+  auto &peers_string = std::get<std::string>(it->second);
+  size_t offset{};
+  {
+    std::lock_guard<std::mutex> lock(cb_->mtx_);
+    while (offset + 6 <= peers_string.size()) {
+      uint32_t peer_ip;
+      uint16_t peer_port;
+      std::memcpy(&peer_ip, peers_string.data() + offset, sizeof(uint32_t));
+      offset += sizeof(uint32_t);
+      std::memcpy(&peer_port, peers_string.data() + offset, sizeof(uint16_t));
+      offset += sizeof(uint16_t);
+
+      cb_->peers_.insert({peer_ip, peer_port});
+    }
+  }
 
   return true;
 }
 
-void SessionHTTP::run() { announce(); }
+void SessionHTTP::run() {
+  unsigned despair{};
+
+  for (;;) {
+    if (!announce())
+      ++despair;
+    else
+      despair = 0;
+
+    std::this_thread::sleep_for(std::chrono::seconds(interval_));
+    if (despair > 8)
+      break; // give up
+  }
+}
 
 } // namespace vtorrent::tracker

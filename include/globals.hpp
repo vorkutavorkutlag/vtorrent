@@ -21,6 +21,10 @@ public:
   static inline constexpr std::string_view key_announce{"announce"};
   static inline constexpr std::string_view key_announce_ls{"announce-list"};
 
+  static inline constexpr std::string_view key_min_interval{"min-interval"};
+  static inline constexpr std::string_view key_interval{"interval"};
+  static inline constexpr std::string_view key_peers{"peers"};
+
   static inline constexpr std::string_view UDP_url_prefix{"udp"};
   static inline constexpr std::string_view HTTP_url_prefix{"http"};
 
